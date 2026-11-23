@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Delete your account{% endblock %}
+{% block content %}
+<article class="card legal">
+<h1>Delete your Smart Shop account</h1>
+<p>You can delete your Smart Shop account and personal data at any time.</p>
+<h2>Customers</h2>
+<ol>
+  <li><a href="{{ url_for('customer_login', next=url_for('customer_delete')) }}">Log in</a> with your phone/email and password.</li>
+  <li>Open <b>Account → Delete my account</b> (or go straight to <a href="{{ url_for('customer_delete') }}">this page</a>).</li>
+  <li>Enter your password, tick the box and press <b>Delete my account</b>.</li>
+</ol>
+<h2>Shop owners</h2>
+<ol>
+  <li><a href="{{ url_for('owner_login') }}">Log in</a> to your shop.</li>
+  <li>Open <b>Dashboard → Shop settings → Delete shop account</b> (or <a href="{{ url_for('owner_delete') }}">this page</a>).</li>
+</ol>
+<h2>What is deleted</h2>
+<ul>
+  <li>Customers: name, phone, email, password, saved address and location, wallet balance and wallet history.
+      Past orders stay in the shop's sales records with your personal details removed.</li>
+  <li>Shops: the shop profile, items, UPI ID, location and its order records.</li>
+</ul>
+<p>Deletion happens immediately. Can't log in? Email <a href="mailto:{{ contact }}">{{ contact }}</a>
+from your registered email or tell us your registered phone number, and we will delete it within 30 days.</p>
+</article>
+{% endblock %}

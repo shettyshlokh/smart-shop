@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Privacy Policy{% endblock %}
+{% block content %}
+<article class="card legal">
+<h1>Privacy Policy</h1>
+<p class="muted">Last updated: {{ updated }}</p>
+<p>Smart Shop ("we", "the app") is made by {{ developer }}. It lets people order from local shops for
+home delivery or pack &amp; pickup. This page explains what information we collect, why, and the choices you have.</p>
+
+<h2>1. Information we collect</h2>
+<ul>
+  <li><b>Account details:</b> your name, phone number, optional email address and password (stored only in encrypted/hashed form).</li>
+  <li><b>Delivery details:</b> the address you type for delivery.</li>
+  <li><b>Location:</b> only when you tap "Use my location" or search an area – used to show nearby shops, distance, delivery area and delivery time. Shop owners save their shop's location.</li>
+  <li><b>Orders:</b> items, amounts, delivery/pickup choice, status and times.</li>
+  <li><b>Payments:</b> payment method, payment reference numbers (UPI reference / UTR, Razorpay payment ID) and wallet transactions.
+      <b>We never see or store your card number, UPI PIN or bank password</b> – card and netbanking payments are handled by Razorpay, and UPI payments by your own UPI app.</li>
+  <li><b>Shop owners:</b> shop name, address, phone, email, opening hours, UPI ID and item list.</li>
+</ul>
+
+<h2>2. How we use it</h2>
+<ul>
+  <li>To create your account, take and deliver your orders and show order status and delivery time.</li>
+  <li>To process payments, wallet balance and refunds.</li>
+  <li>To send order updates by SMS, WhatsApp and email.</li>
+  <li>We do <b>not</b> sell your data and do <b>not</b> show advertising.</li>
+</ul>
+
+<h2>3. Who we share it with</h2>
+<ul>
+  <li><b>The shop you order from</b> sees your name, phone number, delivery address and order so it can prepare and deliver it.</li>
+  <li><b>Service providers</b> that work for us: Razorpay (payments), Twilio (SMS/WhatsApp), our email provider, our hosting provider, and OpenStreetMap (map tiles and area search, loaded by your device).</li>
+  <li>When required by law.</li>
+</ul>
+
+<h2>4. How long we keep it</h2>
+<p>We keep your data while your account is active. When you delete your account we delete your profile,
+saved address, location and wallet history. Shops keep the order amounts for their sales records, but with your
+name, phone, email and address removed.</p>
+
+<h2>5. Your choices</h2>
+<ul>
+  <li>Location is optional – you can always type an area instead.</li>
+  <li>You can update your address at checkout and clear your saved location from the home page.</li>
+  <li><b>Delete your account</b> any time: in the app go to <i>Account → Delete my account</i>, or visit
+      <a href="{{ url_for('delete_account_info') }}">{{ url_for('delete_account_info', _external=True) }}</a>.</li>
+</ul>
+
+<h2>6. Security</h2>
+<p>Passwords are stored hashed, the site uses HTTPS, and online payments are verified with the payment provider before an order is confirmed.</p>
+
+<h2>7. Children</h2>
+<p>Smart Shop is meant for people aged 18 and over. We do not knowingly collect data from children.</p>
+
+<h2>8. Contact</h2>
+<p>Questions or requests: <a href="mailto:{{ contact }}">{{ contact }}</a></p>
+</article>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}{{ shop.name }}{% endblock %}
+{% block head %}{% include "_leaflet.html" %}{% endblock %}
+{% block content %}
+<div class="shop-head">
+  <h1>{{ shop.name }}</h1>
+  <p class="muted">{{ shop.address }} · 📞 {{ shop.phone }}</p>
+  <p>🕘 Open {{ shop.open_time }} – {{ shop.close_time }}
+    {% if is_open(shop) %}<span class="badge open">Open now</span>
+    {% else %}<span class="badge closed">Closed – you can browse but not order</span>{% endif %}</p>
+  <p>🚚 Delivery fee ₹{{ '%.0f'|format(shop.delivery_fee) }} (within {{ '%g'|format(shop.delivery_radius_km) }} km) · 🛍️ Pack & Pickup free</p>
+  {% if is_open(shop) %}
+  <div class="eta-strip">
+    <span>⏱️ Delivery in <b>~{{ eta_text(eta_delivery) }}</b></span>
+    <span>🛍️ Pickup ready in <b>~{{ eta_text(eta_pickup) }}</b></span>
+    <span class="muted">{{ queue }} order{{ 's' if queue != 1 }} ahead · time grows with items in your cart</span>
+  </div>
+  {% endif %}
+  {% if distance is not none %}
+    <p>📍 <b>{{ '%.1f'|format(distance) }} km</b> from you ·
+      {% if delivers %}<span class="badge open">🚚 Delivers to you</span>
+      {% else %}<span class="badge warn">Outside delivery area – Pack & Pickup available</span>{% endif %}</p>
+  {% endif %}
+  {% if shop.lat is not none %}
+    <div id="shop-map" class="map map-small"></div>
+    <a class="btn secondary" target="_blank" rel="noopener"
+       href="https://www.google.com/maps/dir/?api=1&destination={{ shop.lat }},{{ shop.lng }}">🧭 Get directions</a>
+  {% endif %}
+</div>
+{% if shop.lat is not none %}
+<script>
+  const m = baseMap('shop-map', [{{ shop.lat }}, {{ shop.lng }}], 15);
+  if (m) {
+  L.marker([{{ shop.lat }}, {{ shop.lng }}], { icon: shopIcon }).addTo(m).bindPopup({{ shop.name|tojson }});
+  L.circle([{{ shop.lat }}, {{ shop.lng }}], { radius: {{ shop.delivery_radius_km }} * 1000,
+            color: '#4f46e5', fillOpacity: .06 }).addTo(m);
+  }
+</script>
+{% endif %}
+<div class="grid">
+{% for it in items %}
+  <div class="card">
+    <h3>{{ it.name }}</h3>
+    <p class="price">₹{{ '%.2f'|format(it.price) }}</p>
+    {% if it.stock > 0 %}
+      <p class="muted">{{ it.stock }} in stock</p>
+      <form method="post" action="{{ url_for('cart_add', item_id=it.id) }}" class="row">
+        <input type="number" name="qty" value="1" min="1" max="{{ it.stock }}" class="qty">
+        <button>Add to cart</button>
+      </form>
+    {% else %}<p class="badge closed">Out of stock</p>{% endif %}
+  </div>
+{% else %}<p>This shop hasn't added items yet.</p>{% endfor %}
+</div>
+{% endblock %}

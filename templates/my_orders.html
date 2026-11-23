@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}My Orders{% endblock %}
+{% block content %}
+<h1>📦 My Orders</h1>
+{% for o in orders %}
+  <a class="card order-row {{ 'done' if o.status in ['Completed','Cancelled'] }}"
+     href="{{ url_for('order_status', order_id=o.id, phone=o.customer_phone) }}">
+    <div class="row between">
+      <b>#{{ o.id }} · {{ o.shop_name }}</b>
+      <span class="muted">{{ o.created_at }}</span>
+    </div>
+    <p class="muted">{% for it in order_items[o.id] %}{{ it.item_name }} × {{ it.qty }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+    <div class="row between">
+      <span>{{ '🚚 Delivery' if o.mode == 'delivery' else '🛍️ Pack & Pickup' }}
+        · <b>₹{{ '%.2f'|format(o.total) }}</b></span>
+      <span>
+        {% if o.status == awaiting %}<span class="badge closed">Payment pending</span>
+        {% elif o.status == 'Cancelled' %}<span class="badge closed">Cancelled</span>
+        {% elif o.status == 'Completed' %}<span class="badge open">Completed</span>
+        {% else %}<span class="badge warn">{{ o.status }}</span>
+          {% if o.eta_at %}<span class="badge eta">⏱️ by {{ o.eta_at|clock }}</span>{% endif %}{% endif %}
+        {% if o.payment_status == 'Paid' %}<span class="badge open">Paid</span>
+        {% elif o.payment_status == 'Verifying' %}<span class="badge warn">Verifying UPI</span>
+        {% elif o.payment_status in ['Refunded', 'Refund due'] %}<span class="badge eta">{{ o.payment_status }}</span>{% endif %}
+      </span>
+    </div>
+  </a>
+{% else %}
+  <div class="card center">
+    <p>You haven't ordered anything yet.</p>
+    <a class="btn" href="{{ url_for('index') }}">Browse shops</a>
+  </div>
+{% endfor %}
+{% endblock %}

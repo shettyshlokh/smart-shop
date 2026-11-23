@@ -1,0 +1,10 @@
+# secrets - never upload
+.env
+*.keystore
+signing-key-info.txt
+
+# local files
+shopcart.db
+__pycache__/
+*.pyc
+venv/

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Shop Owner Login{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card">
+
+    <div class="auth-side">
+      <div class="auth-logo">🛒</div>
+      <h2>Welcome back!</h2>
+      <p>Manage your shop, items and orders in one place.</p>
+      <ul>
+        <li>📦 Add &amp; update items</li>
+        <li>🕘 Set open / close time</li>
+        <li>🚚 Delivery &amp; 🛍️ Pickup orders</li>
+        <li>💳 Track payments</li>
+      </ul>
+    </div>
+
+    <div class="auth-main">
+      <h1>Shop Owner Login</h1>
+      <p class="muted">Log in to your shop dashboard</p>
+
+      <form method="post" class="auth-form" autocomplete="on">
+        <label>Email
+          <div class="input-icon">
+            <span>✉️</span>
+            <input type="email" name="email" id="email" placeholder="you@example.com" required autofocus>
+          </div>
+        </label>
+
+        <label>Password
+          <div class="input-icon">
+            <span>🔒</span>
+            <input type="password" name="password" id="password" placeholder="Your password" required>
+            <button type="button" class="eye" id="toggle-pw" aria-label="Show password">👁️</button>
+          </div>
+        </label>
+
+        <button class="big">Log in →</button>
+      </form>
+
+      <div class="divider"><span>or</span></div>
+
+      <button type="button" class="big secondary" id="demo-btn">⚡ Try demo shop</button>
+
+      <p class="center auth-foot">New shop? <a href="{{ url_for('owner_register') }}">Create your shop account</a></p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const pw = document.getElementById('password');
+  document.getElementById('toggle-pw').onclick = function () {
+    const show = pw.type === 'password';
+    pw.type = show ? 'text' : 'password';
+    this.textContent = show ? '🙈' : '👁️';
+  };
+  document.getElementById('demo-btn').onclick = function () {
+    document.getElementById('email').value = 'demo@shop.com';
+    pw.value = 'demo123';
+    document.querySelector('.auth-form').submit();
+  };
+</script>
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block head %}{% include "_leaflet.html" %}{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Order from your local shops 🛍️</h1>
+  <p>Get it delivered home, or let the shop pack it and pick it up yourself.</p>
+</section>
+
+<div class="card loc-bar">
+  {% if loc %}
+    <div>📍 Showing shops near <b>{{ loc_label }}</b>
+      <a href="{{ url_for('clear_location') }}" class="muted small-link">change</a></div>
+  {% else %}
+    <div><b>Find shops near you</b><br><span class="muted">Share your location or type your area</span></div>
+  {% endif %}
+  <div class="row loc-actions">
+    <button type="button" id="gps-btn">🎯 Use my location</button>
+    <input id="area" placeholder="Area, e.g. Koramangala, Bengaluru">
+    <button type="button" class="secondary" id="area-btn">Go</button>
+  </div>
+  <p class="muted" id="loc-msg"></p>
+</div>
+
+<div class="row between list-head">
+  <h2>{{ 'Nearby shops' if loc else 'All shops' }}</h2>
+  <form class="search" method="get">
+    <input name="q" value="{{ q }}" placeholder="Search shop name">
+    {% if radius %}<input type="hidden" name="r" value="{{ radius|int }}">{% endif %}
+    <button>Search</button>
+  </form>
+</div>
+
+{% if loc %}
+<div class="chips">
+  <span class="muted">Within:</span>
+  {% for r in radius_choices %}
+    <a class="chip {{ 'active' if radius == r }}" href="{{ url_for('index', r=r, q=q or None) }}">{{ r }} km</a>
+  {% endfor %}
+  <a class="chip {{ 'active' if not radius }}" href="{{ url_for('index', q=q or None) }}">Any distance</a>
+</div>
+{% endif %}
+
+<div id="shops-map" class="map map-big"></div>
+
+<div class="grid">
+{% for s in shops %}
+  <a class="card shop-card" href="{{ url_for('shop_page', shop_id=s.id) }}">
+    <h3>{{ s.name }}</h3>
+    <p class="muted">{{ s.address }}</p>
+    {% if s.distance is not none %}
+      <p class="dist">📍 {{ '%.0f m'|format(s.distance * 1000) if s.distance < 1 else '%.1f km'|format(s.distance) }} away</p>
+    {% endif %}
+    <p>🕘 {{ s.open_time }} – {{ s.close_time }}</p>
+    {% if is_open(s) %}<span class="badge open">Open now</span>
+    {% else %}<span class="badge closed">Closed</span>{% endif %}
+    {% if is_open(s) %}<span class="badge eta">⚡ {{ '~' ~ eta_text(s.eta) }}{{ ' pickup' if s.delivers == false }}</span>{% endif %}
+    {% if s.delivers == true %}<span class="badge open">🚚 Delivers to you</span>
+    {% elif s.delivers == false %}<span class="badge warn">🛍️ Pickup only</span>{% endif %}
+  </a>
+{% else %}
+  <div class="card">
+    {% if radius %}No shops within {{ radius|int }} km. <a href="{{ url_for('index') }}">Show all shops</a>
+    {% else %}No shops found. <a href="{{ url_for('owner_register') }}">Register your shop</a>{% endif %}
+  </div>
+{% endfor %}
+</div>
+<p class="muted center">Own a shop? <a href="{{ url_for('owner_register') }}">Register it here</a></p>
+
+<script>
+  const msg = document.getElementById('loc-msg');
+  function go(lat, lng, label) {
+    const p = new URLSearchParams({ lat, lng, label });
+    {% if radius %}p.set('r', '{{ radius|int }}');{% endif %}
+    location.href = '/?' + p.toString();
+  }
+  document.getElementById('gps-btn').onclick = async () => {
+    msg.textContent = 'Getting your location…';
+    try { const p = await getMyLocation(); go(p.lat, p.lng, 'your current location'); }
+    catch (e) { msg.textContent = e; }
+  };
+  async function searchArea() {
+    const q = document.getElementById('area').value.trim(); if (!q) return;
+    msg.textContent = 'Searching…';
+    try { const p = await geocode(q); go(p.lat, p.lng, p.label); }
+    catch (e) { msg.textContent = e; }
+  }
+  document.getElementById('area-btn').onclick = searchArea;
+  document.getElementById('area').addEventListener('keydown', e => { if (e.key === 'Enter') searchArea(); });
+
+  // Map of shops (+ you)
+  const data = [{% for s in shops if s.lat is not none %}
+    { id: {{ s.id }}, name: {{ s.name|tojson }}, lat: {{ s.lat }}, lng: {{ s.lng }},
+      dist: {{ s.distance if s.distance is not none else 'null' }} },{% endfor %}];
+  const me = {{ (loc | list) | tojson if loc else 'null' }};
+  if (data.length || me) {
+    const map = baseMap('shops-map', me || [data[0].lat, data[0].lng], 13);
+    if (map) {
+    const pts = [];
+    if (me) { L.marker(me, { icon: meIcon }).addTo(map).bindPopup('You are here'); pts.push(me); }
+    data.forEach(s => {
+      L.marker([s.lat, s.lng], { icon: shopIcon }).addTo(map).bindPopup(
+        '<b>' + s.name + '</b>' + (s.dist !== null ? '<br>' + s.dist.toFixed(1) + ' km away' : '') +
+        '<br><a href="/shop/' + s.id + '">Open shop →</a>');
+      pts.push([s.lat, s.lng]);
+    });
+    if (pts.length > 1) map.fitBounds(pts, { padding: [40, 40], maxZoom: 15 });
+    }
+  } else {
+    document.getElementById('shops-map').style.display = 'none';
+  }
+</script>
+{% endblock %}

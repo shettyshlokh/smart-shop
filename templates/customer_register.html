@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Create account{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card">
+
+    <div class="auth-side customer">
+      <div class="auth-logo">✨</div>
+      <h2>Join Smart Shop</h2>
+      <p>One account for every shop in your area.</p>
+      <ul>
+        <li>⚡ Faster checkout</li>
+        <li>🏠 Saved delivery address</li>
+        <li>📱 Order updates by SMS / WhatsApp</li>
+        <li>📦 Full order history</li>
+      </ul>
+    </div>
+
+    <div class="auth-main">
+      <h1>Create account</h1>
+      <p class="muted">It takes less than a minute</p>
+
+      <form method="post" class="auth-form">
+        <label>Full name *
+          <div class="input-icon"><span>👤</span>
+            <input name="name" value="{{ form.get('name','') }}" placeholder="Your name" required autofocus></div>
+        </label>
+        <label>Phone *
+          <div class="input-icon"><span>📱</span>
+            <input type="tel" name="phone" value="{{ form.get('phone','') }}" placeholder="9876543210" required></div>
+        </label>
+        <label>Email <small class="muted">(optional)</small>
+          <div class="input-icon"><span>✉️</span>
+            <input type="email" name="email" value="{{ form.get('email','') }}" placeholder="you@example.com"></div>
+        </label>
+        <div class="two-col">
+          <label>Password *
+            <div class="input-icon"><span>🔒</span>
+              <input type="password" name="password" id="pw1" minlength="6" placeholder="Min 6 characters" required>
+              <button type="button" class="eye" data-target="pw1" aria-label="Show password">👁️</button></div>
+          </label>
+          <label>Confirm *
+            <div class="input-icon"><span>🔒</span>
+              <input type="password" name="confirm" id="pw2" minlength="6" placeholder="Repeat password" required></div>
+          </label>
+        </div>
+        <p id="pw-msg" class="pw-msg"></p>
+        <p class="muted small-print">By creating an account you agree to our <a href="{{ url_for('privacy') }}" target="_blank">Privacy Policy</a>.</p>
+        <button class="big">Create account →</button>
+      </form>
+
+      <p class="center auth-foot">Already have an account?
+        <a href="{{ url_for('customer_login', next=next) if next else url_for('customer_login') }}">Log in</a></p>
+    </div>
+
+  </div>
+</div>
+<script>
+  document.querySelectorAll('.eye').forEach(btn => btn.onclick = function () {
+    const f = document.getElementById(this.dataset.target), show = f.type === 'password';
+    f.type = show ? 'text' : 'password'; this.textContent = show ? '🙈' : '👁️';
+  });
+  const p1 = document.getElementById('pw1'), p2 = document.getElementById('pw2'), msg = document.getElementById('pw-msg');
+  function check() {
+    if (!p2.value) { msg.textContent = ''; return; }
+    const ok = p1.value === p2.value;
+    msg.textContent = ok ? '✓ Passwords match' : '✗ Passwords do not match';
+    msg.className = 'pw-msg ' + (ok ? 'ok' : 'bad');
+  }
+  p1.oninput = p2.oninput = check;
+</script>
+{% endblock %}

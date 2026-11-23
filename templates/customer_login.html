@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card">
+
+    <div class="auth-side customer">
+      <div class="auth-logo">🛍️</div>
+      <h2>Hello again!</h2>
+      <p>Log in to order from your favourite local shops.</p>
+      <ul>
+        <li>🚚 Home delivery</li>
+        <li>🛍️ Pack &amp; pickup from shop</li>
+        <li>💳 Pay online or cash</li>
+        <li>📦 Track all your orders</li>
+      </ul>
+    </div>
+
+    <div class="auth-main">
+      <h1>Customer Login</h1>
+      <p class="muted">Log in with your email or phone number</p>
+
+      <form method="post" class="auth-form" autocomplete="on">
+        <label>Email or phone
+          <div class="input-icon">
+            <span>👤</span>
+            <input name="login" id="login" placeholder="you@example.com or 9876543210" required autofocus>
+          </div>
+        </label>
+
+        <label>Password
+          <div class="input-icon">
+            <span>🔒</span>
+            <input type="password" name="password" id="password" placeholder="Your password" required>
+            <button type="button" class="eye" data-target="password" aria-label="Show password">👁️</button>
+          </div>
+        </label>
+
+        <button class="big">Log in →</button>
+      </form>
+
+      <div class="divider"><span>or</span></div>
+      <button type="button" class="big secondary" id="demo-btn">⚡ Try demo customer</button>
+
+      <p class="center auth-foot">New here?
+        <a href="{{ url_for('customer_register', next=next) if next else url_for('customer_register') }}">Create an account</a></p>
+      <p class="center muted">Are you a shop owner? <a href="{{ url_for('owner_login') }}">Shop login</a></p>
+      <p class="center muted small-print"><a href="{{ url_for('privacy') }}">Privacy</a> · <a href="{{ url_for('delete_account_info') }}">Delete account</a></p>
+    </div>
+
+  </div>
+</div>
+<script>
+  document.querySelectorAll('.eye').forEach(btn => btn.onclick = function () {
+    const f = document.getElementById(this.dataset.target), show = f.type === 'password';
+    f.type = show ? 'text' : 'password'; this.textContent = show ? '🙈' : '👁️';
+  });
+  document.getElementById('demo-btn').onclick = function () {
+    document.getElementById('login').value = '9999999999';
+    document.getElementById('password').value = 'demo123';
+    document.querySelector('.auth-form').submit();
+  };
+</script>
+{% endblock %}

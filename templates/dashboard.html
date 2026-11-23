@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}My shop{% endblock %}
+{% block head %}{% include "_leaflet.html" %}{% endblock %}
+{% block content %}
+<h1>{{ shop.name }} – Dashboard
+  {% if is_open(shop) %}<span class="badge open">Open now</span>{% else %}<span class="badge closed">Closed</span>{% endif %}</h1>
+
+<section id="orders">
+<h2>Orders <span class="badge eta">{{ queue }} being prepared</span></h2>
+{% for o in orders %}
+  <div class="card order {{ 'done' if o.status in ['Completed','Cancelled'] }}">
+    <div class="row between">
+      <b>#{{ o.id }} · {{ o.customer_name }} · 📞 {{ o.customer_phone }}</b>
+      <span>
+        {% if o.eta_at and o.status not in ['Completed','Cancelled'] %}
+          {% if o.eta_at < now %}<span class="badge closed">⚠️ Late – was due {{ o.eta_at|clock }}</span>
+          {% else %}<span class="badge eta">⏱️ Due by {{ o.eta_at|clock }} ({{ o.eta_minutes }} min)</span>{% endif %}
+        {% endif %}
+        <span class="muted">{{ o.created_at }}</span>
+      </span>
+    </div>
+    {% if o.mode == 'delivery' %}<p>🚚 <b>DELIVER</b> to {{ o.address }}</p>
+    {% else %}<p>🛍️ <b>PACK & PICKUP</b> {% if o.pickup_time %}at {{ o.pickup_time }}{% endif %}</p>{% endif %}
+    <div class="pay-line">
+      {% if o.payment_status == 'Paid' %}
+        <span class="badge open">✔ Paid · {{ {'cash':'Cash','upi':'UPI','online':'Card/Netbanking','demo':'Test'}[o.payment_method] }}</span>
+        {% if o.payment_ref %}<span class="muted">Ref {{ o.payment_ref }}</span>{% endif %}
+      {% elif o.payment_status == 'Verifying' %}
+        <span class="badge warn">📱 Check UPI: ₹{{ '%.2f'|format(o.amount_due) }} · Ref <b>{{ o.payment_ref }}</b></span>
+        <form method="post" action="{{ url_for('order_payment', order_id=o.id) }}" class="inline">
+          <button name="action" value="confirm" class="small ok">✔ Received</button>
+          <button name="action" value="reject" class="small danger"
+                  onclick="return confirm('Payment not found? Customer will be asked to pay cash.')">✘ Not received</button>
+        </form>
+      {% elif o.payment_status == 'Refunded' %}<span class="badge eta">↩ Refunded {{ 'to wallet' if o.refund_to == 'wallet' else '' }}{% if o.payment_ref and o.refund_to != 'wallet' %} · {{ o.payment_ref }}{% endif %}</span>
+      {% elif o.payment_status == 'Refund due' %}
+        <span class="badge closed">↩ Return ₹{{ '%.2f'|format(o.amount_due) }} (UPI ref {{ o.payment_ref }}){{ ' – customer asked for wallet' if o.refund_to == 'wallet' }}</span>
+        <form method="post" action="{{ url_for('order_payment', order_id=o.id) }}" class="inline">
+          <button name="action" value="to_wallet" class="small ok">💰 Credit to wallet</button>
+          <button name="action" value="returned" class="small secondary">✔ I returned it by UPI</button>
+        </form>
+      {% else %}<span class="badge warn">💵 Collect cash ₹{{ '%.2f'|format(o.amount_due) }}</span>{% endif %}
+    </div>
+    {% if o.wallet_used %}<p class="muted">💰 ₹{{ '%.2f'|format(o.wallet_used) }} paid from customer wallet</p>{% endif %}
+    {% if o.status == 'Cancelled' %}<p class="muted">❌ Cancelled by {{ o.cancelled_by or 'shop' }}{% if o.cancel_reason %}: {{ o.cancel_reason }}{% endif %}</p>{% endif %}
+    <p>{% for it in order_items[o.id] %}{{ it.item_name }} × {{ it.qty }}{% if not loop.last %}, {% endif %}{% endfor %}
+       — <b>₹{{ '%.2f'|format(o.total) }}</b></p>
+    <form method="post" action="{{ url_for('order_update', order_id=o.id) }}" class="row">
+      <select name="status">
+        {% for s in statuses %}<option {% if s == o.status %}selected{% endif %}>{{ s }}</option>{% endfor %}
+      </select>
+      <button>Update</button>
+    </form>
+  </div>
+{% else %}<p class="muted">No orders yet.</p>{% endfor %}
+</section>
+
+<section>
+<h2>Items</h2>
+<form method="post" action="{{ url_for('item_add') }}" class="row card">
+  <input name="name" placeholder="Item name" required>
+  <input type="number" step="0.01" name="price" placeholder="Price ₹" required>
+  <input type="number" name="stock" placeholder="Stock" required>
+  <button>+ Add item</button>
+</form>
+<table>
+  <tr><th>Name</th><th>Price</th><th>Stock</th><th>Available</th><th></th></tr>
+  {% for it in items %}
+  <tr>
+    <form method="post" action="{{ url_for('item_update', item_id=it.id) }}">
+      <td><input name="name" value="{{ it.name }}"></td>
+      <td><input type="number" step="0.01" name="price" value="{{ it.price }}" class="qty"></td>
+      <td><input type="number" name="stock" value="{{ it.stock }}" class="qty"></td>
+      <td><input type="checkbox" name="available" {% if it.available %}checked{% endif %}></td>
+      <td><button>Save</button></form>
+      <form method="post" action="{{ url_for('item_delete', item_id=it.id) }}" style="display:inline"
+            onsubmit="return confirm('Delete {{ it.name }}?')"><button class="danger">Delete</button></form></td>
+  </tr>
+  {% endfor %}
+</table>
+</section>
+
+<section>
+<h2>Shop settings</h2>
+<form method="post" action="{{ url_for('owner_settings') }}" class="form">
+  <label>Shop name<input name="name" value="{{ shop.name }}" required></label>
+  <label>Address<input name="address" value="{{ shop.address }}"></label>
+  <label>Phone<input name="phone" value="{{ shop.phone }}"></label>
+  <div class="row">
+    <label>Opens at<input type="time" name="open_time" value="{{ shop.open_time }}" required></label>
+    <label>Closes at<input type="time" name="close_time" value="{{ shop.close_time }}" required></label>
+  </div>
+  <label>Delivery fee (₹)<input type="number" step="0.01" name="delivery_fee" value="{{ shop.delivery_fee }}"></label>
+  <label>📱 UPI ID for payments <small class="muted">(e.g. sharmastore@okaxis – customers pay you directly, no fees)</small>
+    <input name="upi_id" value="{{ shop.upi_id or '' }}" placeholder="yourname@okaxis"></label>
+  {% set pick_lat = shop.lat %}{% set pick_lng = shop.lng %}{% set pick_radius = shop.delivery_radius_km %}
+  {% include "_map_picker.html" %}
+  <button>Save settings</button>
+</form>
+<p class="muted">🔒 <a href="{{ url_for('privacy') }}">Privacy Policy</a> ·
+  🗑️ <a href="{{ url_for('owner_delete') }}" class="bad-text">Delete shop account</a></p>
+<p class="muted">Customer link to share: <code>{{ url_for('shop_page', shop_id=shop.id, _external=True) }}</code></p>
+</section>
+{% endblock %}

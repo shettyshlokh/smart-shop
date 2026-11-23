@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Order #{{ order.id }}{% endblock %}
+{% block content %}
+{% if order.status == awaiting %}
+  <h1>⏳ Order #{{ order.id }} – payment pending</h1>
+  <div class="card">
+    <p>Your order is saved but not confirmed until you pay.
+      {% if order.payment_status == 'Failed' %}<br><b class="bad-text">Last payment attempt failed.</b>{% endif %}</p>
+    <a class="btn big" href="{{ url_for('pay', order_id=order.id, phone=order.customer_phone) }}">💳 Pay ₹{{ '%.2f'|format(order.amount_due) }} now</a>
+  </div>
+{% else %}
+  <h1>✅ Order #{{ order.id }} placed</h1>
+{% endif %}
+<p>Shop: <b>{{ shop.name }}</b> · 📞 {{ shop.phone }}</p>
+{% set active = order.status in ['Placed','Accepted','Packed','Out for delivery','Ready for pickup'] %}
+{% if order.eta_at and active %}
+<div class="eta-card" id="eta-card" data-at="{{ order.eta_at }}">
+  {% if order.status == 'Ready for pickup' %}
+    <div class="eta-big">🛍️ Your order is ready – come and collect it!</div>
+  {% else %}
+    <div class="eta-big">
+      {{ '🚚 Arriving' if order.mode == 'delivery' else '🛍️ Ready for pickup' }} in
+      <span id="eta-left">~{{ eta_text(order.eta_minutes) }}</span>
+    </div>
+    <div>Expected by <b>{{ order.eta_at|clock }}</b></div>
+  {% endif %}
+  {% set steps = ['Placed','Accepted','Packed', 'Out for delivery' if order.mode == 'delivery' else 'Ready for pickup'] %}
+  {% set cur = steps.index(order.status) if order.status in steps else 3 %}
+  <div class="steps">
+    {% for s in steps %}<span class="step {{ 'done' if loop.index0 <= cur }}">{{ s }}</span>{% endfor %}
+  </div>
+</div>
+<script>
+  (function () {
+    const card = document.getElementById('eta-card'), left = document.getElementById('eta-left');
+    if (!left) return;
+    const at = new Date(card.dataset.at.replace(' ', 'T'));
+    function tick() {
+      const m = Math.ceil((at - Date.now()) / 60000);
+      left.textContent = m > 0 ? '~' + m + ' min' : 'a few minutes (running a little late)';
+    }
+    tick(); setInterval(tick, 30000);
+  })();
+</script>
+{% endif %}
+<p>Status: <span class="badge open">{{ order.status }}</span>
+   <a href="">(refresh)</a></p>
+<p>Payment:
+  {% if order.payment_status == 'Paid' %}<span class="badge open">✔ Paid{% if order.payment_method != 'cash' %} by {{ {'upi':'UPI','online':'card / netbanking','demo':'test payment'}[order.payment_method] }}{% endif %}</span>
+    {% if order.payment_ref %}<span class="muted">Ref: {{ order.payment_ref }}</span>{% endif %}
+  {% elif order.payment_status == 'Verifying' %}<span class="badge warn">⏳ UPI payment being verified by the shop</span> <span class="muted">Ref: {{ order.payment_ref }}</span>
+  {% elif order.payment_status == 'Refunded' %}<span class="badge eta">↩ Refunded{{ ' to your wallet' if order.refund_to == 'wallet' else ' to original payment' }}</span>
+  {% elif order.payment_status == 'Refund due' %}<span class="badge warn">↩ Refund of ₹{{ '%.2f'|format(order.amount_due) }} pending from shop</span>
+  {% elif order.payment_method == 'cash' %}<span class="badge warn">{{ 'Cash on delivery' if order.mode == 'delivery' else 'Pay at pickup' }}</span>
+  {% else %}<span class="badge closed">{{ order.payment_status }}</span>{% endif %}
+</p>
+{% if order.mode == 'delivery' %}
+  <p>🚚 <b>Home Delivery</b> to: {{ order.address }}</p>
+{% else %}
+  <p>🛍️ <b>Pack & Pickup</b> {% if order.pickup_time %}at {{ order.pickup_time }}{% endif %} from {{ shop.address }}</p>
+{% endif %}
+<table>
+  <tr><th>Item</th><th>Qty</th><th>Price</th></tr>
+  {% for it in items %}<tr><td>{{ it.item_name }}</td><td>{{ it.qty }}</td><td>₹{{ '%.2f'|format(it.price * it.qty) }}</td></tr>{% endfor %}
+  <tr><td colspan="2">Delivery fee</td><td>₹{{ '%.2f'|format(order.delivery_fee) }}</td></tr>
+  <tr><th colspan="2">Total</th><th>₹{{ '%.2f'|format(order.total) }}</th></tr>
+  {% if order.wallet_used %}
+  <tr><td colspan="2">💰 Paid from wallet</td><td>−₹{{ '%.2f'|format(order.wallet_used) }}</td></tr>
+  <tr><th colspan="2">{{ 'Paid' if order.payment_status == 'Paid' else 'To pay' }} by {{ pay_labels[order.payment_method] if order.payment_method != 'wallet' else 'wallet' }}</th><th>₹{{ '%.2f'|format(order.amount_due) }}</th></tr>
+  {% endif %}
+</table>
+<p class="muted">You will also get updates by SMS / WhatsApp{% if order.customer_email %} and email{% endif %}. Bookmark this page to track your order.</p>
+{% if order.status == 'Cancelled' %}
+<div class="card cancel-info">
+  <b>❌ Order cancelled</b> by {{ 'you' if order.cancelled_by == 'customer' else 'the shop' }}
+  {% if order.cancel_reason %}· Reason: {{ order.cancel_reason }}{% endif %}
+</div>
+{% elif can_cancel %}
+{% set refundable = order.payment_status in ['Paid', 'Verifying'] and order.payment_method not in ['cash', 'wallet'] and order.amount_due > 0 %}
+<details class="card cancel-box">
+  <summary>❌ Cancel this order</summary>
+  <form method="post" action="{{ url_for('customer_cancel', order_id=order.id) }}"
+        onsubmit="return confirm('Cancel order #{{ order.id }}?')">
+    <input type="hidden" name="phone" value="{{ order.customer_phone }}">
+    <label>Why are you cancelling?
+      <select name="reason" id="reason">
+        {% for r in reasons %}<option>{{ r }}</option>{% endfor %}
+      </select>
+    </label>
+    <input name="other_reason" id="other-reason" placeholder="Tell us the reason" hidden maxlength="200">
+
+    {% if refundable or order.wallet_used %}
+      <h4>↩ Where should we return your money?</h4>
+      {% if order.wallet_used %}<p class="muted">₹{{ '%.2f'|format(order.wallet_used) }} paid from your wallet always goes back to your wallet instantly.</p>{% endif %}
+      {% if refundable %}
+      <div class="options">
+        <label class="option">
+          <input type="radio" name="refund_to" value="wallet" checked>
+          <span>💰 <b>Smart Shop Wallet</b> <span class="tag">Instant</span><br>
+            <small>₹{{ '%.2f'|format(order.amount_due) }} – use it on your next order{% if order.payment_status == 'Verifying' %} (after the shop checks your UPI payment){% endif %}</small></span>
+        </label>
+        <label class="option">
+          <input type="radio" name="refund_to" value="original">
+          <span>🏦 <b>Original payment</b><br>
+            <small>{% if order.payment_method == 'upi' %}Shop returns it to your UPI{% elif order.payment_method == 'online' %}Back to card / bank in 5–7 days{% else %}Back to the test card{% endif %}</small></span>
+        </label>
+      </div>
+      {% endif %}
+    {% endif %}
+    <button class="big danger">Cancel order</button>
+    <p class="muted">You can cancel until the shop packs your order.</p>
+  </form>
+</details>
+<script>
+  const rs = document.getElementById('reason'), other = document.getElementById('other-reason');
+  rs.onchange = () => { other.hidden = rs.value !== 'Other'; };
+</script>
+{% elif order.status not in ['Completed'] %}
+<p class="muted">This order is already {{ order.status|lower }}, so it can't be cancelled online. Call the shop: {{ shop.phone }}</p>
+{% endif %}
+{% endblock %}

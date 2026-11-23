@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}My Wallet{% endblock %}
+{% block content %}
+<div class="wallet-card">
+  <div class="muted-light">Smart Shop Wallet balance</div>
+  <div class="wallet-bal">₹{{ '%.2f'|format(wallet) }}</div>
+  <div class="muted-light">Use it at checkout in any shop · Refunds arrive here instantly</div>
+</div>
+
+{% if can_topup %}
+<form method="post" action="{{ url_for('wallet_topup') }}" class="card topup">
+  <h3>➕ Add money {% if demo %}<span class="badge warn">Test mode</span>{% endif %}</h3>
+  <div class="chips">
+    {% for a in [100, 200, 500, 1000] %}<button type="button" class="chip" data-amt="{{ a }}">₹{{ a }}</button>{% endfor %}
+  </div>
+  <div class="row">
+    <input type="number" name="amount" id="amount" min="10" max="10000" step="1" placeholder="Amount (₹10 – ₹10,000)" required>
+    <button>Add money →</button>
+  </div>
+</form>
+{% endif %}
+
+<h2>History</h2>
+{% if txns %}
+<table>
+  <tr><th>Date</th><th>Details</th><th class="right">Amount</th></tr>
+  {% for t in txns %}
+  <tr>
+    <td class="muted">{{ t.created_at }}</td>
+    <td>{{ t.reason }}{% if t.order_id %} · <a href="{{ url_for('my_orders') }}">order #{{ t.order_id }}</a>{% endif %}</td>
+    <td class="right {{ 'plus' if t.amount > 0 else 'minus' }}">{{ '+' if t.amount > 0 else '−' }}₹{{ '%.2f'|format(t.amount|abs) }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="card center muted">No wallet activity yet. Refunds from cancelled orders will appear here.</div>
+{% endif %}
+<script>
+  document.querySelectorAll('.chip[data-amt]').forEach(c =>
+    c.onclick = () => document.getElementById('amount').value = c.dataset.amt);
+</script>
+{% endblock %}

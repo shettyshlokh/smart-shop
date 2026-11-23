@@ -1,0 +1,63 @@
+{# Map picker for the shop location. Needs pick_lat, pick_lng, pick_radius. #}
+<div class="map-picker">
+  <h3>📍 Shop location</h3>
+  <p class="muted">Customers use this to find shops near them. Click the map or drag the 🏪 pin to your exact shop.</p>
+  <div class="row">
+    <button type="button" class="secondary" id="mp-gps">🎯 Use my current location</button>
+  </div>
+  <div class="row">
+    <input id="mp-search" placeholder="Or search: e.g. MG Road, Bengaluru">
+    <button type="button" class="secondary" id="mp-search-btn">Search</button>
+  </div>
+  <div id="mp-map" class="map"></div>
+  <p class="muted" id="mp-status">{% if pick_lat %}Location set ✔{% else %}Location not set yet{% endif %}</p>
+  <input type="hidden" name="lat" id="mp-lat" value="{{ pick_lat if pick_lat is not none else '' }}">
+  <input type="hidden" name="lng" id="mp-lng" value="{{ pick_lng if pick_lng is not none else '' }}">
+  <label>Delivery area (km from shop)
+    <input type="number" name="delivery_radius_km" id="mp-radius" min="0.5" max="50" step="0.5" value="{{ pick_radius or 5 }}">
+  </label>
+</div>
+<script>
+(function () {
+  const latIn = document.getElementById('mp-lat'), lngIn = document.getElementById('mp-lng');
+  const radiusIn = document.getElementById('mp-radius'), status = document.getElementById('mp-status');
+  const has = latIn.value !== '';
+  const map = baseMap('mp-map', has ? [+latIn.value, +lngIn.value] : INDIA, has ? 15 : 5);
+  if (!map) { status.textContent = 'Map could not load (check internet). You can still use the location button.'; }
+  let marker = null, circle = null;
+
+  function place(lat, lng, zoom) {
+    latIn.value = lat.toFixed(6); lngIn.value = lng.toFixed(6);
+    if (!map) { status.textContent = 'Location set ✔ (' + latIn.value + ', ' + lngIn.value + ')'; return; }
+    if (!marker) {
+      marker = L.marker([lat, lng], { draggable: true, icon: shopIcon }).addTo(map);
+      marker.on('dragend', e => { const p = e.target.getLatLng(); place(p.lat, p.lng); });
+      circle = L.circle([lat, lng], { radius: 1000, color: '#4f46e5', fillOpacity: .08 }).addTo(map);
+    }
+    marker.setLatLng([lat, lng]); circle.setLatLng([lat, lng]); drawRadius();
+    if (zoom) map.setView([lat, lng], zoom);
+    status.textContent = 'Location set ✔ (' + latIn.value + ', ' + lngIn.value + ')';
+  }
+  function drawRadius() { if (circle) circle.setRadius((+radiusIn.value || 5) * 1000); }
+
+  if (has) place(+latIn.value, +lngIn.value);
+  if (map) map.on('click', e => place(e.latlng.lat, e.latlng.lng));
+  radiusIn.addEventListener('input', drawRadius);
+
+  document.getElementById('mp-gps').onclick = async () => {
+    status.textContent = 'Getting your location…';
+    try { const p = await getMyLocation(); place(p.lat, p.lng, 16); }
+    catch (err) { status.textContent = err; }
+  };
+  async function search() {
+    const q = document.getElementById('mp-search').value.trim(); if (!q) return;
+    status.textContent = 'Searching…';
+    try { const p = await geocode(q); place(p.lat, p.lng, 16); }
+    catch (err) { status.textContent = err; }
+  }
+  document.getElementById('mp-search-btn').onclick = search;
+  document.getElementById('mp-search').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); search(); }   // don't submit the whole form
+  });
+})();
+</script>

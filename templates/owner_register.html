@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Register shop{% endblock %}
+{% block head %}{% include "_leaflet.html" %}{% endblock %}
+{% block content %}
+<h1>Register your shop</h1>
+<form method="post" class="form">
+  <label>Shop name *<input name="name" value="{{ form.get('name','') }}" required></label>
+  <label>Email *<input type="email" name="email" value="{{ form.get('email','') }}" required></label>
+  <label>Password *<input type="password" name="password" required></label>
+  <label>Address<input name="address" value="{{ form.get('address','') }}"></label>
+  <label>Phone<input name="phone" value="{{ form.get('phone','') }}"></label>
+  <div class="row">
+    <label>Opens at *<input type="time" name="open_time" value="{{ form.get('open_time','09:00') }}" required></label>
+    <label>Closes at *<input type="time" name="close_time" value="{{ form.get('close_time','21:00') }}" required></label>
+  </div>
+  <label>Delivery fee (₹)<input type="number" step="0.01" name="delivery_fee" value="{{ form.get('delivery_fee','30') }}"></label>
+  <label>📱 UPI ID <small class="muted">(optional – to accept UPI payments, e.g. yourname@okaxis)</small>
+    <input name="upi_id" value="{{ form.get('upi_id','') }}" placeholder="yourname@okaxis"></label>
+  {% set pick_lat = form.get('lat') %}{% set pick_lng = form.get('lng') %}{% set pick_radius = form.get('delivery_radius_km', 5) %}
+  {% include "_map_picker.html" %}
+  <p class="muted">By creating a shop account you agree to our <a href="{{ url_for('privacy') }}" target="_blank">Privacy Policy</a>.</p>
+  <button>Create shop</button>
+</form>
+<p>Already registered? <a href="{{ url_for('owner_login') }}">Log in</a></p>
+{% endblock %}

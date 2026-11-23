@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Pay by UPI – Order #{{ order.id }}{% endblock %}
+{% block content %}
+<div class="card pay-card upi-card">
+  <h1>📱 Pay ₹{{ '%.2f'|format(order.amount_due) }} by UPI</h1>
+  <p>Order #{{ order.id }} · <b>{{ shop.name }}</b></p>
+
+  <a class="btn big upi-app-btn" href="{{ upi_link }}">Open UPI app (GPay / PhonePe / Paytm)</a>
+  <p class="muted mobile-only">Works on your phone. On a computer, scan the QR code instead.</p>
+
+  <div class="qr-box">
+    <div class="qr">{{ qr|safe }}</div>
+    <p class="muted">Scan with any UPI app</p>
+    <p>Paying to: <b>{{ shop.upi_id }}</b> <button type="button" class="small secondary" id="copy-upi">Copy</button></p>
+  </div>
+
+  <ol class="upi-steps">
+    <li>Pay <b>₹{{ '%.2f'|format(order.amount_due) }}</b> using the button or QR code.</li>
+    <li>Your UPI app shows a <b>UPI Ref / UTR number</b> (usually 12 digits) after payment.</li>
+    <li>Enter it below so the shop can confirm your payment.</li>
+  </ol>
+
+  <form method="post" action="{{ url_for('pay_upi_submit', order_id=order.id) }}" class="upi-form">
+    <input type="hidden" name="phone" value="{{ order.customer_phone }}">
+    <input name="utr" placeholder="UPI Ref / UTR no. e.g. 432198765432" required minlength="6" maxlength="30"
+           pattern="[A-Za-z0-9]{6,30}" inputmode="numeric" autocomplete="off">
+    <button class="big">✔ I have paid</button>
+  </form>
+  <p class="muted">Changed your mind? <a href="{{ url_for('order_status', order_id=order.id, phone=order.customer_phone) }}">Pay later</a></p>
+</div>
+<script>
+  document.getElementById('copy-upi').onclick = function () {
+    navigator.clipboard.writeText({{ shop.upi_id|tojson }}).then(() => this.textContent = 'Copied ✔');
+  };
+</script>
+{% endblock %}

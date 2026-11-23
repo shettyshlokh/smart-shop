@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Checkout{% endblock %}
+{% block content %}
+<h1>Checkout – {{ shop.name }}</h1>
+<form method="post" class="form">
+  <label>Your name *<input name="name" value="{{ form.get('name','') }}" required></label>
+  <label>Phone * <small class="muted">(order updates by SMS / WhatsApp)</small>
+    <input name="phone" value="{{ form.get('phone','') }}" required></label>
+  <label>Email <small class="muted">(optional, for email updates)</small>
+    <input type="email" name="email" value="{{ form.get('email','') }}"></label>
+
+  <h3>How do you want your order?</h3>
+  <div class="options">
+    <label class="option {% if not can_deliver %}disabled{% endif %}">
+      <input type="radio" name="mode" value="delivery" {% if not can_deliver %}disabled{% elif form.get('mode') != 'pickup' %}checked{% endif %}>
+      <span>🚚 <b>Home Delivery</b><br><small>{% if can_deliver %}Fee ₹{{ '%.0f'|format(shop.delivery_fee) }} · ⚡ ~{{ eta_text(eta_d[0]) }}{% else %}You are {{ '%.1f'|format(distance) }} km away – shop delivers within {{ '%g'|format(shop.delivery_radius_km) }} km{% endif %}</small></span>
+    </label>
+    <label class="option">
+      <input type="radio" name="mode" value="pickup" {% if form.get('mode') == 'pickup' or not can_deliver %}checked{% endif %}>
+      <span>🛍️ <b>Pack & Pickup</b><br><small>Shop packs it, you collect – free · ⚡ ready in ~{{ eta_text(eta_p[0]) }}</small></span>
+    </label>
+  </div>
+
+  <div id="delivery-box">
+    <label>Delivery address *<textarea name="address">{{ form.get('address','') }}</textarea></label>
+  </div>
+  <div id="pickup-box">
+    <label>Pickup time (between {{ shop.open_time }} and {{ shop.close_time }})
+      <input type="time" name="pickup_time" value="{{ form.get('pickup_time','') }}"></label>
+  </div>
+
+  <h3>Payment</h3>
+  {% if wallet_bal > 0 %}
+  <label class="wallet-use">
+    <input type="checkbox" name="use_wallet" id="use-wallet" value="1" {% if form.get('use_wallet', '1') %}checked{% endif %}>
+    <span>💰 Use wallet balance <b>₹{{ '%.2f'|format(wallet_bal) }}</b></span>
+  </label>
+  {% endif %}
+  <p class="paid-by-wallet" id="wallet-full" hidden>✔ Your wallet covers the full amount – no other payment needed.</p>
+  {% set chosen = form.get('payment') if form.get('payment') in methods else ('upi' if 'upi' in methods else 'cash') %}
+  <div class="options pay-options" id="pay-options">
+    <label class="option">
+      <input type="radio" name="payment" value="cash" {% if chosen == 'cash' %}checked{% endif %}>
+      <span>💵 <b id="cash-label">Cash on Delivery</b><br><small>Pay when you receive it</small></span>
+    </label>
+    {% if 'upi' in methods %}
+    <label class="option">
+      <input type="radio" name="payment" value="upi" {% if chosen == 'upi' %}checked{% endif %}>
+      <span>📱 <b>UPI</b> <span class="tag">No fees</span><br><small>GPay · PhonePe · Paytm · BHIM</small></span>
+    </label>
+    {% endif %}
+    {% if 'online' in methods %}
+    <label class="option">
+      <input type="radio" name="payment" value="online" {% if chosen == 'online' %}checked{% endif %}>
+      <span>💳 <b>Card / Netbanking</b><br><small>Secure payment by Razorpay</small></span>
+    </label>
+    {% endif %}
+    {% if 'demo' in methods %}
+    <label class="option">
+      <input type="radio" name="payment" value="demo" {% if chosen == 'demo' %}checked{% endif %}>
+      <span>🧪 <b>Online (test mode)</b><br><small>For demos – no real money</small></span>
+    </label>
+    {% endif %}
+  </div>
+
+  <div class="eta-box">
+    <div class="eta-big" id="eta-title"></div>
+    <div class="muted" id="eta-why"></div>
+  </div>
+
+  <div class="summary">
+    <p>Subtotal: ₹<span id="sub">{{ '%.2f'|format(subtotal) }}</span></p>
+    <p>Delivery: ₹<span id="fee"></span></p>
+    <p>Total: ₹<span id="total"></span></p>
+    <p id="wallet-row" hidden>💰 From wallet: −₹<span id="wallet-amt"></span></p>
+    <p class="price">To pay: ₹<span id="due"></span></p>
+  </div>
+  <button class="big">Place order</button>
+</form>
+<script>
+  const fee = {{ shop.delivery_fee }}, sub = {{ subtotal }}, walletBal = {{ wallet_bal }};
+  const eta = {
+    delivery: { min: {{ eta_d[0] }}, why: {{ ("Packing " ~ eta_d[1].count ~ " item(s): " ~ eta_d[1].pack ~ " min · "
+                 ~ eta_d[1].queue ~ " order(s) ahead: " ~ eta_d[1].wait ~ " min · travel"
+                 ~ (" " ~ '%.1f'|format(distance) ~ " km" if distance is not none else "") ~ ": " ~ eta_d[1].travel ~ " min")|tojson }} },
+    pickup:   { min: {{ eta_p[0] }}, why: {{ ("Packing " ~ eta_p[1].count ~ " item(s): " ~ eta_p[1].pack ~ " min · "
+                 ~ eta_p[1].queue ~ " order(s) ahead: " ~ eta_p[1].wait ~ " min")|tojson }} }
+  };
+  function refresh() {
+    const mode = document.querySelector('input[name=mode]:checked').value;
+    document.getElementById('delivery-box').style.display = mode === 'delivery' ? '' : 'none';
+    document.getElementById('pickup-box').style.display = mode === 'pickup' ? '' : 'none';
+    document.getElementById('cash-label').textContent = mode === 'delivery' ? 'Cash on Delivery' : 'Pay at Pickup';
+    const f = mode === 'delivery' ? fee : 0;
+    document.getElementById('fee').textContent = f.toFixed(2);
+    const e = eta[mode], by = new Date(Date.now() + e.min * 60000)
+      .toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    document.getElementById('eta-title').textContent =
+      (mode === 'delivery' ? '🚚 Arrives in ~' : '🛍️ Ready for pickup in ~') + e.min + ' min (by ' + by + ')';
+    document.getElementById('eta-why').textContent = e.why;
+    const total = sub + f, useW = document.getElementById('use-wallet');
+    const w = useW && useW.checked ? Math.min(walletBal, total) : 0, due = total - w;
+    document.getElementById('total').textContent = total.toFixed(2);
+    document.getElementById('wallet-row').hidden = w <= 0;
+    document.getElementById('wallet-amt').textContent = w.toFixed(2);
+    document.getElementById('due').textContent = due.toFixed(2);
+    document.getElementById('pay-options').hidden = due <= 0.001;
+    document.getElementById('wallet-full').hidden = due > 0.001;
+  }
+  if (document.getElementById('use-wallet')) document.getElementById('use-wallet').addEventListener('change', refresh);
+  document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', refresh));
+  refresh();
+</script>
+{% endblock %}

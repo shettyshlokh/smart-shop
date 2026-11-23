@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}My Account{% endblock %}
+{% block content %}
+<div class="card account-head">
+  <div class="avatar">{{ me.name[:1]|upper }}</div>
+  <div>
+    <h2>{{ me.name }}</h2>
+    <p class="muted">📱 {{ me.phone }}{% if me.email %} · ✉️ {{ me.email }}{% endif %}</p>
+  </div>
+</div>
+<div class="menu-list card">
+  <a href="{{ url_for('my_orders') }}">📦 <span>My Orders</span><b>›</b></a>
+  <a href="{{ url_for('wallet_page') }}">💰 <span>Wallet · ₹{{ '%.2f'|format(wallet) }}</span><b>›</b></a>
+  <a href="{{ url_for('index') }}#loc-msg">📍 <span>Change my location</span><b>›</b></a>
+  {% if me.address %}<div class="menu-info">🏠 <span>Saved address: {{ me.address }}</span></div>{% endif %}
+  <a href="{{ url_for('owner_login') }}">🏪 <span>I own a shop</span><b>›</b></a>
+  <a href="{{ url_for('customer_logout') }}" class="logout">🚪 <span>Logout</span><b>›</b></a>
+</div>
+<div class="menu-list card">
+  <a href="{{ url_for('privacy') }}">🔒 <span>Privacy Policy</span><b>›</b></a>
+  <a href="{{ url_for('customer_delete') }}" class="logout">🗑️ <span>Delete my account</span><b>›</b></a>
+</div>
+<p class="center muted">Smart Shop · made as a 2nd-year engineering project</p>
+{% endblock %}

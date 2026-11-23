@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}Smart Shop{% endblock %}{% if self.title() != 'Smart Shop' %} · Smart Shop{% endif %}</title>
+
+  {# ---- app (PWA) settings ---- #}
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="description" content="Order from local shops near you – delivery or pack & pickup.">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Smart Shop">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+<div class="bg" aria-hidden="true">
+  <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
+</div>
+<header class="topbar">
+  <a class="brand" href="{{ url_for('index') }}">🛒 Smart Shop</a>
+  <nav>
+    <button type="button" class="install-btn" id="install-btn" hidden>⬇ Install app</button>
+    <span class="desk-nav">
+    <a href="{{ url_for('cart_view') }}">🛒 Cart ({{ cart_count }})</a>
+    {% if customer %}
+      <a href="{{ url_for('my_orders') }}">📦 My Orders</a>
+      <a href="{{ url_for('wallet_page') }}" class="nav-btn">💰 ₹{{ '%.0f'|format(wallet) }}</a>
+      <span class="hello">Hi, {{ customer.name.split()[0] }}</span>
+      <a href="{{ url_for('customer_logout') }}">Logout</a>
+    {% else %}
+      <a href="{{ url_for('customer_login') }}" class="nav-btn">Login</a>
+    {% endif %}
+    {% if session.shop_id %}
+      <a href="{{ url_for('dashboard') }}">🏪 My Shop</a>
+      <a href="{{ url_for('owner_logout') }}">Owner Logout</a>
+    {% else %}
+      <a href="{{ url_for('owner_login') }}" class="nav-muted">For Shops</a>
+    {% endif %}
+    </span>
+  </nav>
+</header>
+
+<main class="container">
+  <div class="ios-tip" id="ios-tip" hidden>
+    📲 Install Smart Shop: tap <b>Share</b> <span class="share-ico">⬆</span> then <b>Add to Home Screen</b>
+    <button type="button" class="small secondary" onclick="dismissTip()">✕</button>
+  </div>
+  {% for msg in get_flashed_messages() %}<div class="flash">{{ msg }}</div>{% endfor %}
+  {% block content %}{% endblock %}
+</main>
+
+{# ---- bottom tab bar (phones / installed app) ---- #}
+{% set ep = request.endpoint or '' %}
+<nav class="tabbar">
+  <a href="{{ url_for('index') }}" class="{{ 'on' if ep in ['index', 'shop_page'] }}"><span>🏠</span>Home</a>
+  <a href="{{ url_for('cart_view') }}" class="{{ 'on' if ep in ['cart_view', 'checkout'] }}">
+    <span>🛒{% if cart_count %}<i class="dot">{{ cart_count }}</i>{% endif %}</span>Cart</a>
+  <a href="{{ url_for('my_orders') }}" class="{{ 'on' if ep in ['my_orders', 'order_status'] }}"><span>📦</span>Orders</a>
+  <a href="{{ url_for('wallet_page') }}" class="{{ 'on' if ep.startswith('wallet') }}"><span>💰</span>{{ '₹%.0f'|format(wallet) if customer else 'Wallet' }}</a>
+  {% if session.shop_id %}
+    <a href="{{ url_for('dashboard') }}" class="{{ 'on' if ep == 'dashboard' }}"><span>🏪</span>My Shop</a>
+  {% elif customer %}
+    <a href="{{ url_for('account') }}" class="{{ 'on' if ep == 'account' }}"><span>👤</span>Account</a>
+  {% else %}
+    <a href="{{ url_for('customer_login') }}" class="{{ 'on' if ep in ['customer_login', 'customer_register'] }}"><span>👤</span>Login</a>
+  {% endif %}
+</nav>
+
+<script>
+  // ---- register the service worker (makes the app installable + offline page)
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+  }
+  // ---- "Install app" button (Android / Chrome / Edge)
+  let installEvt = null;
+  const btn = document.getElementById('install-btn');
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; btn.hidden = false; });
+  btn.onclick = async () => {
+    if (!installEvt) return;
+    installEvt.prompt(); await installEvt.userChoice; installEvt = null; btn.hidden = true;
+  };
+  window.addEventListener('appinstalled', () => { btn.hidden = true; });
+  // ---- iPhone: no install button exists, so show a one-time tip
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  let tipSeen = false; try { tipSeen = localStorage.getItem('iosTip') === '1'; } catch (e) {}
+  if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !standalone && !tipSeen) {
+    document.getElementById('ios-tip').hidden = false;
+  }
+  function dismissTip() {
+    document.getElementById('ios-tip').hidden = true;
+    try { localStorage.setItem('iosTip', '1'); } catch (e) {}
+  }
+  if (standalone) document.documentElement.classList.add('in-app');
+</script>
+</body>
+</html>

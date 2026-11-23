@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Test payment – Order #{{ order.id }}{% endblock %}
+{% block content %}
+<div class="card pay-card">
+  <div class="test-banner">🧪 TEST MODE – no real money is charged</div>
+  <h1>💳 Pay ₹{{ '%.2f'|format(order.amount_due) }}</h1>
+  <p>Order #{{ order.id }} · <b>{{ shop.name }}</b></p>
+
+  <div class="fake-card">
+    <div class="row between"><span>💳 Test card</span><span>VISA</span></div>
+    <div class="fake-num">4111 1111 1111 1111</div>
+    <div class="row between muted"><span>{{ order.customer_name }}</span><span>12/30</span></div>
+  </div>
+
+  <form method="post" action="{{ url_for('pay_demo_submit', order_id=order.id) }}" id="demo-form">
+    <input type="hidden" name="phone" value="{{ order.customer_phone }}">
+    <button name="result" value="success" class="big" id="ok-btn">✔ Simulate successful payment</button>
+    <button name="result" value="fail" class="big secondary">✘ Simulate failed payment</button>
+  </form>
+  <p class="muted">Add Razorpay keys in <code>.env</code> to take real card / netbanking payments.</p>
+</div>
+<script>
+  document.getElementById('demo-form').addEventListener('submit', () => {
+    const b = document.getElementById('ok-btn'); b.textContent = 'Processing…';
+  });
+</script>
+{% endblock %}

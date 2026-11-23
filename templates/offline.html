@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}You're offline{% endblock %}
+{% block content %}
+<div class="card pay-card">
+  <div style="font-size:3rem">📡</div>
+  <h1>You're offline</h1>
+  <p class="muted">Smart Shop needs internet to show shops, stock and your orders.</p>
+  <button class="big" onclick="location.reload()">Try again</button>
+</div>
+{% endblock %}

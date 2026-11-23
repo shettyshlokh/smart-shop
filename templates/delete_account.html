@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Delete account{% endblock %}
+{% block content %}
+<div class="card delete-card">
+  <h1>⚠️ Delete {{ 'my account' if kind == 'customer' else 'shop account' }}</h1>
+  {% if kind == 'customer' %}
+    <p>This permanently deletes your profile, saved address, location and wallet history.</p>
+    {% if balance > 0 %}
+      <p class="flash">💰 You still have <b>₹{{ '%.2f'|format(balance) }}</b> in your wallet. It will be lost – use it on an order first.</p>
+    {% endif %}
+  {% else %}
+    <p>This permanently deletes <b>{{ me.name }}</b>, all its items, settings and order records.</p>
+  {% endif %}
+
+  {% if active %}
+    <p class="flash">You have <b>{{ active }}</b> order(s) in progress or a refund pending.
+      Please wait until {{ 'they are finished' if kind == 'customer' else 'you complete or cancel them' }} before deleting.</p>
+    <a class="btn secondary" href="{{ url_for('my_orders') if kind == 'customer' else url_for('dashboard') }}">See orders</a>
+  {% else %}
+  <form method="post" class="auth-form">
+    <label>Enter your password to confirm
+      <input type="password" name="password" required autocomplete="current-password"></label>
+    <label class="check-line"><input type="checkbox" name="confirm" value="1" required>
+      I understand this cannot be undone.</label>
+    <button class="big danger">Delete {{ 'my account' if kind == 'customer' else 'shop account' }} permanently</button>
+  </form>
+  {% endif %}
+  <p class="center"><a href="{{ url_for('account') if kind == 'customer' else url_for('dashboard') }}">← Keep my account</a></p>
+</div>
+{% endblock %}
